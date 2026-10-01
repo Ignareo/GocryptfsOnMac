@@ -1,4 +1,4 @@
-# GoctyptfsOnMac — gocryptfs 加密文件夹双击管理工具（macOS）
+# GocryptfsOnMac — gocryptfs 加密文件夹双击管理工具（macOS）
 
 一个 `.command` 脚本：双击后在终端打开，自动扫描当前目录下的 [gocryptfs](https://github.com/rfjakob/gocryptfs) 加密文件夹，输入序号即可挂载解密 / 卸载，无需记任何命令。
 
@@ -46,7 +46,7 @@ sudo port install gocryptfs     # 或 MacPorts
 **3. 安装本脚本**：
 
 ```bash
-curl -LO https://raw.githubusercontent.com/Ignareo/GoctyptfsOnMac/main/加密管理.command
+curl -LO https://raw.githubusercontent.com/Ignareo/GocryptfsOnMac/main/加密管理.command
 chmod +x 加密管理.command
 ```
 
