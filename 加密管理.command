@@ -25,20 +25,17 @@ die_no_gocryptfs() {
 # 输出当前所有 macFUSE 挂载，每行: 加密目录<TAB>挂载点（均为规范化路径）
 list_mounts() {
     mount | grep '(macfuse' | sed -E 's/^(.*) on (.*) \(macfuse.*/\1\t\2/' | while IFS=$'\t' read -r src dst; do
+        # 只认 gocryptfs 挂载（加密目录内有 gocryptfs.conf），不动 sshfs/NTFS-3G 等其他 macFUSE 挂载
+        [ -f "$src/gocryptfs.conf" ] || continue
         c_src="$(cd "$src" 2>/dev/null && pwd -P)"
         c_dst="$(cd "$dst" 2>/dev/null && pwd -P)"
         [ -n "$c_src" ] && [ -n "$c_dst" ] && printf '%s\t%s\n' "$c_src" "$c_dst"
     done
 }
 
-# 若 $1(规范化路径) 已挂载，输出挂载点；否则返回非 0
+# 若 $1(规范化路径) 已挂载，输出挂载点；否则输出空
 mountpoint_of() {
-    list_mounts | while IFS=$'\t' read -r src dst; do
-        if [ "$src" = "$1" ]; then
-            echo "$dst"
-            return 0 2>/dev/null || true
-        fi
-    done | head -1
+    list_mounts | awk -F'\t' -v v="$1" '$1 == v {print $2; exit}'
 }
 
 # 目录是否"空"（忽略 .DS_Store）
@@ -94,6 +91,7 @@ do_mount() {
     fi
 
     local idle_opt=()
+    local idle_min=""
     read -r -p "「$name」闲置自动卸载分钟数（直接回车 = 不启用）: " idle_min
     if [[ "$idle_min" =~ ^[1-9][0-9]*$ ]]; then
         idle_opt=(-idle "${idle_min}m")
@@ -140,7 +138,7 @@ handle_vault() {
 new_vault() {
     read -r -p "新加密文件夹名称（将创建于 $BASE_DIR 下）: " name
     [ -z "$name" ] && { echo "已取消"; return; }
-    case "$name" in */*|\[解密\]*) echo "名称不能包含 / 或以 [解密] 结尾"; return ;; esac
+    case "$name" in */*|*\[解密\]*) echo "名称不能包含 / 或 [解密]"; return ;; esac
     local v="$BASE_DIR/$name"
     [ -e "$v" ] && { echo "已存在: $v"; return; }
     mkdir -p "$v" || return 1

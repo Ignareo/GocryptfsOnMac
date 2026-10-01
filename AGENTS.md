@@ -25,10 +25,13 @@
 6. **主菜单 `read` 必须 `|| break`**。stdin 到 EOF 时 `read` 返回空串，不处理会死循环刷菜单。
 7. **卸载逻辑有两份**。`lock-watcher.swift` 内嵌的 shell 卸载片段与 `加密管理.command` 的 `list_mounts`/`do_unmount` 等效——守护进程必须自包含（不能依赖脚本路径，launchd 场景下脚本可能移动）。修改 mount 表解析或卸载策略时**两边同步**。
 8. **Swift 与 SDK 的坑**（macOS 27 SDK 实测）：
-   - `kIOMessageSystemWillSleep` 宏（`iokit_common_msg(0x280)`）未导出到 Swift，须硬编码 `0xE0000280`。
-   - `IONotificationPortGetRunLoopSource` 在新 SDK 返回 `Unmanaged<CFRunLoopSource>?`，需 `.takeUnretainedValue()`。
-   - `notifyutil -p com.apple.screenIsLocked` **不能**模拟锁屏通知（送不达 DistributedNotificationCenter）；真实睡眠会同时触发 `systemWillSleep` 和 `screenIsLocked`，用 `pmset sleepnow` 做真实测试即可覆盖两条路径。
+   - `kIOMessageSystemWillSleep` / `kIOMessageCanSystemSleep` 宏（`iokit_common_msg(...)`）未导出到 Swift，须硬编码：`0xE0000280` / `0xE0000270`（**已用 C 在本机 SDK 验证**；注意网络资料常误写 CanSystemSleep 为 0x230 系列值）。**CanSystemSleep 必须立即 IOAllowPowerChange 应答**，否则每次空闲睡眠系统空等 30 秒。
+   - `IONotificationPortGetRunLoopSource` 在新 SDK 返回 `Unmanaged<CFRunLoopSource>?`，需 `.takeUnretainedValue()`；源注册用 `.commonModes`。
+   - 编译固定 `-swift-version 5`（全局可变状态被 @convention(c) 回调捕获，Swift 6 严格并发报错），产物显式 `codesign -s -` ad-hoc 签名。
+   - IOKit 电源接口**不含关机/重启/注销**，须另注册 `NSWorkspace.willPowerOffNotification` 兜底；启动时用 `CGSessionCopyCurrentDictionary()` 的 `CGSSessionScreenIsLocked` 查初始锁屏状态。
+   - `notifyutil -p com.apple.screenIsLocked` **不能**模拟锁屏通知（送不达 DistributedNotificationCenter）；真实睡眠会同时触发 `systemWillSleep` 和 `screenIsLocked`（两次 unmountAll 并发，幂等无碍），用 `pmset sleepnow` 做真实测试即可覆盖。
    - watcher 的强制卸载开关：`~/.config/gocryptfs-lockwatcher/force` 文件存在即启用 `diskutil unmount force` 兜底。
+9. **只卸 gocryptfs 挂载，不是全部 macFUSE 挂载**。`mount` 解析后必须再按"加密目录内存在 `gocryptfs.conf`"过滤（sshfs/rclone/NTFS-3G 同样显示 `(macfuse, ...)`）。此过滤在 `加密管理.command` 的 `list_mounts` 与 `lock-watcher.swift` 内嵌 shell 中各有一份，改动须两边同步。
 
 ## 命名约定
 

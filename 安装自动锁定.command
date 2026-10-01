@@ -19,7 +19,10 @@ do_install() {
     }
     mkdir -p "$APP_DIR" "$HOME/Library/LaunchAgents"
     echo "编译守护进程..."
-    swiftc -O -o "$BIN" lock-watcher.swift || { echo "编译失败"; exit 1; }
+    # 固定 Swift 5 语言模式：全局可变状态被 @convention(c) 回调捕获，Swift 6 严格并发会报错
+    swiftc -O -swift-version 5 -o "$BIN" lock-watcher.swift || { echo "编译失败"; exit 1; }
+    # 显式 ad-hoc 签名（不依赖链接器的隐式行为）
+    codesign -s - "$BIN" 2>/dev/null || true
 
     cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
