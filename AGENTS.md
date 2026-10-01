@@ -6,7 +6,9 @@
 
 ## 文件结构
 
-- `加密管理.command` — 全部逻辑（约 200 行 bash）。文件名含中文，`[解密]` 后缀约定见下。
+- `加密管理.command` — 主交互逻辑（约 200 行 bash）。文件名含中文，`[解密]` 后缀约定见下。支持非交互模式 `--unmount-all`（全部卸载后退出）。
+- `lock-watcher.swift` — 自动锁定守护进程源码（swiftc 编译）。监听系统睡眠（IOKit，IOAllowPowerChange 保证卸载完成才入睡）、锁屏（`com.apple.screenIsLocked`）、快速切换用户（`NSWorkspace.sessionDidResignActiveNotification`），触发后卸载全部 macFUSE 挂载。
+- `安装自动锁定.command` — 编译 watcher、写入 `~/Library/LaunchAgents/com.gocryptfsonmac.lockwatcher.plist` 并 bootstrap；支持重装/卸载。日志在 `~/Library/Logs/GocryptfsLockWatcher.log`。
 - `README.md` — 人类用户文档。
 
 ## 硬性约束（改动前必读）
@@ -21,6 +23,12 @@
    ```
    设备名就是加密目录路径。比对前两侧都要 `cd dir && pwd -P` 规范化——`mount` 会解析符号链接（如 `/tmp` → `/private/tmp`）。
 6. **主菜单 `read` 必须 `|| break`**。stdin 到 EOF 时 `read` 返回空串，不处理会死循环刷菜单。
+7. **卸载逻辑有两份**。`lock-watcher.swift` 内嵌的 shell 卸载片段与 `加密管理.command` 的 `list_mounts`/`do_unmount` 等效——守护进程必须自包含（不能依赖脚本路径，launchd 场景下脚本可能移动）。修改 mount 表解析或卸载策略时**两边同步**。
+8. **Swift 与 SDK 的坑**（macOS 27 SDK 实测）：
+   - `kIOMessageSystemWillSleep` 宏（`iokit_common_msg(0x280)`）未导出到 Swift，须硬编码 `0xE0000280`。
+   - `IONotificationPortGetRunLoopSource` 在新 SDK 返回 `Unmanaged<CFRunLoopSource>?`，需 `.takeUnretainedValue()`。
+   - `notifyutil -p com.apple.screenIsLocked` **不能**模拟锁屏通知（送不达 DistributedNotificationCenter）；真实睡眠会同时触发 `systemWillSleep` 和 `screenIsLocked`，用 `pmset sleepnow` 做真实测试即可覆盖两条路径。
+   - watcher 的强制卸载开关：`~/.config/gocryptfs-lockwatcher/force` 文件存在即启用 `diskutil unmount force` 兜底。
 
 ## 命名约定
 

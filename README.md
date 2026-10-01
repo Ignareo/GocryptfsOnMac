@@ -12,12 +12,13 @@
 - **新建加密文件夹**：菜单 `n`，引导式 `gocryptfs -init`，并提醒抄写 master key
 - **修改密码**：菜单 `p`，调用 `gocryptfs -passwd`
 - **安全保护**：`[解密]` 目录已存在且里面有真实文件、又不是挂载状态时，拒绝挂载并警告——防止把明文写进普通目录却误以为已解密（Finder 自动生成的 `.DS_Store` 会自动清理，不影响）
+- **自动锁定（可选）**：安装守护进程后，**系统睡眠前 / 锁屏 / 快速切换用户** 时自动卸载所有 gocryptfs 挂载，合盖走人无需手动操作
 
 ## 系统要求
 
 | 组件 | 版本 | 说明 |
 |---|---|---|
-| macOS | 12 – 27（已在 macOS 27 Golden Gate / Apple Silicon 实测） | |
+| macOS | 12 – 27 | 已在 macOS 27 Golden Gate / Apple Silicon 实测 |
 | [macFUSE](https://macfuse.github.io) | **≥ 5.3.3，推荐 5.4.0+** | macOS 26 Tahoe / 27 Golden Gate **必须** ≥ 5.3.3；旧系统可用更早版本 |
 | [gocryptfs](https://github.com/rfjakob/gocryptfs) | ≥ 2.x（实测 2.6.1） | |
 
@@ -72,6 +73,25 @@ chmod +x 加密管理.command
 - 输入 `1` → 可选输入闲置自动卸载分钟数（直接回车不启用）→ 输入密码 → 挂载完成并打开 Finder
 - 解密后的文件在 `加密A[解密]` 中读写，加密目录 `加密A` 本身始终保持密文，可直接同步到网盘
 - 用完输入 `u` 全部卸载（或选中对应序号单独卸载）
+
+## 自动锁定（可选）
+
+双击 **`安装自动锁定.command`**，会编译并安装一个 launchd 守护进程（登录自启、崩溃自动拉起，零第三方依赖）。之后：
+
+- **合盖/系统睡眠前**：守护进程先卸载全部挂载，再放行睡眠（IOKit 同步接口保证顺序）
+- **锁屏**（Ctrl+Cmd+Q / 菜单锁屏）：立即卸载
+- **快速切换用户**：立即卸载
+
+唤醒/解锁后**不会自动重挂**（需要重新输密码，这正是安全意义），双击 `加密管理.command` 一键重挂即可。
+
+其他说明：
+
+- 日志：`~/Library/Logs/GocryptfsLockWatcher.log`
+- 若卸载时挂载点正被占用（有程序打开着文件），默认跳过保留挂载；要强制卸载就执行
+  `mkdir -p ~/.config/gocryptfs-lockwatcher && touch ~/.config/gocryptfs-lockwatcher/force`
+  （注意：强制卸载后，编辑器里未保存的修改将无法写回）
+- 卸载守护进程：再次双击 `安装自动锁定.command` 选 `2`
+- 命令行也可以手动全部卸载：`加密管理.command --unmount-all`
 
 ## 常见问题
 

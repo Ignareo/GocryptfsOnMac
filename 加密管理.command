@@ -166,6 +166,13 @@ unmount_all() {
     [ "$found" -eq 0 ] && echo "当前没有已挂载的加密文件夹"
 }
 
+# ---------- 非交互模式（供自动锁定守护进程 / 命令行调用） ----------
+
+if [ "${1:-}" = "--unmount-all" ]; then
+    unmount_all
+    exit 0
+fi
+
 # ---------- 主循环 ----------
 
 command -v gocryptfs >/dev/null 2>&1 || die_no_gocryptfs
