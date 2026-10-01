@@ -32,7 +32,8 @@
 
 ## 命名约定
 
-- 加密文件夹判定：目录内含 `gocryptfs.conf`，扫描范围为脚本所在目录的子目录、`find -mindepth 2 -maxdepth 3`（即子目录深度 ≤ 2）。
+- 加密文件夹判定：目录内含 `gocryptfs.conf`，扫描范围为基准目录的子目录、`find -mindepth 2 -maxdepth 3`（即子目录深度 ≤ 2）。
+- 基准目录（BASE_DIR）：**默认 `~/Documents`**，可用第一个位置参数（若是目录）或环境变量 `GOCRYPTFS_BASE_DIR` 覆盖。注意 `cd "$BASE_DIR" && pwd -P` 规范化，与 `mount` 表比对时保持一致。
 - 挂载点 = `<加密目录路径>[解密]`（同级、同名加后缀）。扫描时跳过名字以 `[解密]` 结尾的目录。
 
 ## 环境事实（排障依据，2026-09 实测）
@@ -46,11 +47,11 @@
 
 ```bash
 T=/tmp/gctest; rm -rf "$T"; mkdir -p "$T/sub"
-cp 加密管理.command "$T/"
 printf 'pw111\n' > "$T/pw1"; mkdir -p "$T/vault1" "$T/sub/vault2"
 gocryptfs -init -passfile "$T/pw1" "$T/vault1"
 # ...
-printf '1 2\n\npw222\n\npw111\n' | "$T/加密管理.command"   # 菜单选择 → 闲置分钟回车 → 密码
+# 以临时目录为参数运行（默认目录是 ~/Documents，测试必须传参覆盖）：
+printf '1 2\n\npw222\n\npw111\n' | ./加密管理.command "$T"   # 菜单选择 → 闲置分钟回车 → 密码
 ```
 
 要点：

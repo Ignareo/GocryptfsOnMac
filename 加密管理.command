@@ -1,10 +1,17 @@
 #!/bin/bash
-# 加密管理.command —— 双击运行，管理当前目录下的 gocryptfs 加密文件夹
-# 判定依据：子目录（深度≤2）中存在 gocryptfs.conf
+# 加密管理.command —— 双击运行，管理 ~/Documents 下的 gocryptfs 加密文件夹
+# 判定依据：~/Documents 的子目录（深度≤2）中存在 gocryptfs.conf
 # 挂载点：加密文件夹同级、同名加 [解密] 后缀
+# 覆盖扫描目录：加密管理.command <目录>  或  GOCRYPTFS_BASE_DIR=<目录>
 
-cd "$(dirname "$0")" || exit 1
-BASE_DIR="$(pwd -P)"
+# 第一个参数若是目录则作为扫描目录，其次环境变量，默认 ~/Documents
+if [ -d "${1:-}" ]; then
+    BASE_DIR="$1"
+else
+    BASE_DIR="${GOCRYPTFS_BASE_DIR:-$HOME/Documents}"
+fi
+[ -d "$BASE_DIR" ] || { echo "错误：扫描目录不存在: $BASE_DIR"; exit 1; }
+BASE_DIR="$(cd "$BASE_DIR" && pwd -P)"
 export PATH="/opt/local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
 
 # ---------- 工具函数 ----------

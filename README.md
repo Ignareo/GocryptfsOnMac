@@ -51,7 +51,12 @@ curl -LO https://raw.githubusercontent.com/Ignareo/GocryptfsOnMac/main/加密管
 chmod +x 加密管理.command
 ```
 
-把 `加密管理.command` 放到你的加密文件夹所在目录（例如 `~/Documents`，加密文件夹为 `~/Documents/加密A`）。
+把 `加密管理.command` 放到任意位置（如 `~/Documents`）。**双击后默认扫描 `~/Documents` 的子目录（深度 ≤ 2）**，与脚本放在哪无关。想扫描其他目录：
+
+```bash
+./加密管理.command /path/to/其他目录        # 命令行参数
+GOCRYPTFS_BASE_DIR=/path ./加密管理.command   # 或环境变量
+```
 
 > 如果 Finder 双击提示无法打开（未公证），在文件上**右键 → 打开**即可。
 
